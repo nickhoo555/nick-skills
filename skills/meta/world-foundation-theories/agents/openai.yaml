@@ -1,0 +1,4 @@
+interface:
+  display_name: "世界底层理论"
+  short_description: "用于分析底层理论、元知识、系统演化与跨领域认知框架"
+  default_prompt: "Use $world-foundation-theories to analyze a question through logic, probability, systems, information, evolution, game theory, and economics."

@@ -74,12 +74,17 @@ function parseSkill(filePath: string, contents: string): Skill | undefined {
 
   const segments = relativePath.split("/");
   const isExperimental = segments[1] === ".experimental";
-  const expectedDepth = isExperimental ? 4 : 3;
+  const expectedDepth = isExperimental ? 5 : 4;
 
   if (segments.length !== expectedDepth) {
     errors.push(
-      `${relativePath}: Skill 必须位于 skills/<name>/ 或 skills/.experimental/<name>/`,
+      `${relativePath}: Skill 必须位于 skills/<category>/<name>/ 或 skills/.experimental/<category>/<name>/`,
     );
+  }
+
+  const category = segments[isExperimental ? 2 : 1] ?? "";
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(category)) {
+    errors.push(`${relativePath}: category 必须使用小写 kebab-case`);
   }
 
   const directoryName = segments.at(-2) ?? "";

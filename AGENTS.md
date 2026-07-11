@@ -4,11 +4,11 @@
 
 ## Layout
 
-- `skills/.experimental/<skill-name>/SKILL.md`：验证中的 Skill。
-- `skills/<skill-name>/SKILL.md`：已经公开的 Skill。
+- `skills/.experimental/<category>/<skill-name>/SKILL.md`：验证中的 Skill。
+- `skills/<category>/<skill-name>/SKILL.md`：已经公开的 Skill。
 - Skill 的引用资料、脚本和模板与其 `SKILL.md` 放在同一目录。
 
-不要用额外 bucket 表示成熟度；`metadata.internal` 是公开状态的唯一真源。
+`category` 只表示主题分类，不表示成熟度。不要用额外 bucket 表示成熟度；`metadata.internal` 是公开状态的唯一真源。
 
 ## Validation status
 
@@ -25,9 +25,9 @@ metadata:
 
 ## Promotion workflow
 
-1. 在 `skills/.experimental/<skill-name>/` 创建和验证 Skill。
+1. 在 `skills/.experimental/<category>/<skill-name>/` 创建和验证 Skill。
 2. 使用 `INSTALL_INTERNAL_SKILLS=1 npx skills add . --list` 检查内部发现。
-3. 验证完成后，将目录移动到 `skills/<skill-name>/`。
+3. 验证完成后，将目录移动到 `skills/<category>/<skill-name>/`。
 4. 删除 `metadata.internal: true`。
 5. 将 Skill 添加到顶层 `README.md` 的 **Public skills**。
 6. 运行 `bun scripts/check-skills.ts` 和 `npx skills add . --list`。

@@ -22,10 +22,10 @@ npx skills add nickhoo555/nick-skills --skill <skill-name>
 
 ## Skill 状态
 
-- **验证中**：位于 `skills/.experimental/<skill-name>/`，并设置 `metadata.internal: true`。
-- **已公开**：位于 `skills/<skill-name>/`，不设置 `metadata.internal`，并列入下方目录。
+- **验证中**：位于 `skills/.experimental/<category>/<skill-name>/`，并设置 `metadata.internal: true`。
+- **已公开**：位于 `skills/<category>/<skill-name>/`，不设置 `metadata.internal`，并列入下方目录。
 
-目录用于方便维护，`metadata.internal` 才是 `npx skills` 可见性的依据。
+`category` 只表示主题分类；`metadata.internal` 才是 `npx skills` 可见性的依据。
 
 查看或安装验证中的 Skill 时，需要显式开启内部 Skill：
 
@@ -35,19 +35,21 @@ INSTALL_INTERNAL_SKILLS=1 npx skills add . --list
 
 ## Public skills
 
-暂无。
+### Meta（元知识）
+
+- [`world-foundation-theories`](./skills/meta/world-foundation-theories/SKILL.md)：用底层理论和跨领域认知框架分析复杂问题。
 
 ## 维护
 
 新增 Skill 时先进入验证阶段：
 
 ```text
-skills/.experimental/<skill-name>/SKILL.md
+skills/.experimental/<category>/<skill-name>/SKILL.md
 ```
 
 验证完成后：
 
-1. 移动到 `skills/<skill-name>/SKILL.md`。
+1. 移动到 `skills/<category>/<skill-name>/SKILL.md`。
 2. 删除 `metadata.internal: true`。
 3. 在 **Public skills** 中添加指向 `SKILL.md` 的链接。
 4. 运行校验：
