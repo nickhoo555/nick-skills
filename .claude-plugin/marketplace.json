@@ -1,0 +1,19 @@
+{
+  "name": "nick-skills",
+  "plugins": [
+    {
+      "name": "meta",
+      "source": "./",
+      "skills": [
+        "./skills/meta/world-foundation-theories"
+      ]
+    },
+    {
+      "name": "tools",
+      "source": "./",
+      "skills": [
+        "./skills/tools/macos-disk-space-governor"
+      ]
+    }
+  ]
+}

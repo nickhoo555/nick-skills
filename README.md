@@ -39,6 +39,10 @@ INSTALL_INTERNAL_SKILLS=1 npx skills add . --list
 
 - [`world-foundation-theories`](./skills/meta/world-foundation-theories/SKILL.md)：用底层理论和跨领域认知框架分析复杂问题。
 
+### Tools（工具）
+
+- [`macos-disk-space-governor`](./skills/tools/macos-disk-space-governor/SKILL.md)：为 macOS 内置磁盘建立可持续的审计、归档、迁移和清理方案。
+
 ## 维护
 
 新增 Skill 时先进入验证阶段：
@@ -52,10 +56,12 @@ skills/.experimental/<category>/<skill-name>/SKILL.md
 1. 移动到 `skills/<category>/<skill-name>/SKILL.md`。
 2. 删除 `metadata.internal: true`。
 3. 在 **Public skills** 中添加指向 `SKILL.md` 的链接。
-4. 运行校验：
+4. 将 Skill 添加到 `.claude-plugin/marketplace.json` 中与目录 `category` 同名的分组。
+5. 运行校验：
 
 ```bash
 bun scripts/check-skills.ts
+npx skills add . --list
 ```
 
 详细规则见 [`AGENTS.md`](./AGENTS.md)。

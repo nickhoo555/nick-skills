@@ -10,6 +10,8 @@
 
 `category` 只表示主题分类，不表示成熟度。不要用额外 bucket 表示成熟度；`metadata.internal` 是公开状态的唯一真源。
 
+`npx skills` 不会根据目录自动生成 TUI 分组。`.claude-plugin/marketplace.json` 负责把每个 Skill 映射到与其 `category` 同名的分组；公开和验证中的 Skill 都必须恰好出现一次。
+
 ## Validation status
 
 验证中的 Skill 必须设置：
@@ -30,7 +32,8 @@ metadata:
 3. 验证完成后，将目录移动到 `skills/<category>/<skill-name>/`。
 4. 删除 `metadata.internal: true`。
 5. 将 Skill 添加到顶层 `README.md` 的 **Public skills**。
-6. 运行 `bun scripts/check-skills.ts` 和 `npx skills add . --list`。
+6. 确认 `.claude-plugin/marketplace.json` 中的路径仍属于正确分类。
+7. 运行 `bun scripts/check-skills.ts` 和 `npx skills add . --list`。
 
 弃用 Skill 时直接删除，由 Git 历史保留。不要维护 deprecated bucket。
 
@@ -49,4 +52,4 @@ metadata:
 bun scripts/check-skills.ts
 ```
 
-校验器负责检查目录、名称、重复项、公开目录以及 `metadata.internal` 一致性。
+校验器负责检查目录、名称、重复项、公开目录、TUI 分组以及 `metadata.internal` 一致性。
