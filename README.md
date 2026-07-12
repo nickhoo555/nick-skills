@@ -5,9 +5,7 @@
 > 你中有我，我中有你；
 > 世界之中有你我，你我之中有世界。
 
-
 ## 安装
-
 
 ```bash
 npx skills add nickhoo555/nick-skills
