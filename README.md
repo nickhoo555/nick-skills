@@ -1,10 +1,17 @@
 # Nick's Skills
 
-> **105°C 的 Skills** —— 蒸馏世界，蒸馏自己；
-> 你中有我，我中有你；世界之中有你我，你我之中有世界。
+> **105°C 的 Skills** 
+> 蒸馏世界，蒸馏自己；
+> 你中有我，我中有你；
+> 世界之中有你我，你我之中有世界。
 
-我维护和验证自己使用的 Agent Skills。第三方 Skill 不复制进本仓库。
+
 ## 安装
+
+
+```bash
+npx skills add nickhoo555/nick-skills
+```
 
 查看本仓库已经公开的 Skill：
 
