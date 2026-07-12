@@ -5,6 +5,16 @@
 > 你中有我，我中有你；
 > 世界之中有你我，你我之中有世界。
 
+## Public skills
+
+### Meta（元知识）
+
+- [`world-foundation-theories`](./skills/meta/world-foundation-theories/SKILL.md)：用底层理论和跨领域认知框架分析复杂问题。
+
+### Tools（工具）
+
+- [`macos-disk-space-governor`](./skills/tools/macos-disk-space-governor/SKILL.md)：为 macOS 内置磁盘建立可持续的审计、归档、迁移和清理方案。
+
 ## 安装
 
 ```bash
@@ -36,15 +46,6 @@ npx skills add nickhoo555/nick-skills --skill <skill-name>
 INSTALL_INTERNAL_SKILLS=1 npx skills add . --list
 ```
 
-## Public skills
-
-### Meta（元知识）
-
-- [`world-foundation-theories`](./skills/meta/world-foundation-theories/SKILL.md)：用底层理论和跨领域认知框架分析复杂问题。
-
-### Tools（工具）
-
-- [`macos-disk-space-governor`](./skills/tools/macos-disk-space-governor/SKILL.md)：为 macOS 内置磁盘建立可持续的审计、归档、迁移和清理方案。
 
 ## 维护
 
