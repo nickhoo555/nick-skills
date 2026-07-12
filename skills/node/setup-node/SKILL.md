@@ -47,20 +47,11 @@ npm config set "@starx:registry" "https://npm.lan.starxmate.com/" --location=use
 pnpm config set --global --json minimumReleaseAgeExclude '["@starx/*"]'
 
 # 验证
-npm config get registry
-npm config get "@starx:registry"
-pnpm config get --json minimumReleaseAgeExclude
+# 安装私有包，公共依赖走 npmmirror，私有依赖走 自建 Registry
+pnpm add -g @starx/hihi
+hihi -v
+hihi
 ```
-
-预期：
-
-```text
-https://registry.npmmirror.com/
-https://npm.lan.starxmate.com/
-["@starx/*"]
-```
-
-Registry 和认证写入用户 `.npmrc`；pnpm 11 的其他全局设置写入 `pnpm config get globalconfig` 返回的 YAML 文件。
 
 ## pnpm 11 构建审批
 
