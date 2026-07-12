@@ -1,0 +1,4 @@
+interface:
+  display_name: "使用 Starx npm"
+  short_description: "Starx 团队内网 npm 注册、安装、发布与账号操作指南"
+  default_prompt: "使用 $use-starx-npm 告诉我如何安装或发布 Starx 内部 npm 包。"

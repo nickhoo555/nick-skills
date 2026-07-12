@@ -15,6 +15,11 @@
 
 - [`macos-disk-space-governor`](./skills/tools/macos-disk-space-governor/SKILL.md)：为 macOS 内置磁盘建立可持续的审计、归档、迁移和清理方案。
 
+### Node（Node.js 技术）
+
+- [`setup-node`](./skills/node/setup-node/SKILL.md)：配置 Node 与 pnpm 环境基线，包括公共镜像、私有 Registry 和安装兼容设置。
+- [`use-starx-npm`](./skills/node/use-starx-npm/SKILL.md)：使用 Starx 团队内网 npm 仓库完成安装、认证、发布和 CI 配置。
+
 ## 安装
 
 ```bash

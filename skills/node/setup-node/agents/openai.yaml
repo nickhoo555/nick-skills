@@ -1,0 +1,4 @@
+interface:
+  display_name: "配置 Node 环境"
+  short_description: "配置公共镜像、私有 scope 与 pnpm 11 环境基线"
+  default_prompt: "使用 $setup-node 配置这台机器的 Node 与 pnpm 环境。"

@@ -14,6 +14,14 @@
       "skills": [
         "./skills/tools/macos-disk-space-governor"
       ]
+    },
+    {
+      "name": "node",
+      "source": "./",
+      "skills": [
+        "./skills/node/setup-node",
+        "./skills/node/use-starx-npm"
+      ]
     }
   ]
 }
