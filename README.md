@@ -1,11 +1,9 @@
 # Nick's Skills
 
-我维护和验证自己使用的 Agent Skills。第三方 Skill 不复制进本仓库；例如 Matt Pocock 的 Skill 继续直接从官方仓库安装：
+> **105°C 的 Skills** —— 蒸馏世界，蒸馏自己；
+> 你中有我，我中有你；世界之中有你我，你我之中有世界。
 
-```bash
-npx skills add mattpocock/skills
-```
-
+我维护和验证自己使用的 Agent Skills。第三方 Skill 不复制进本仓库。
 ## 安装
 
 查看本仓库已经公开的 Skill：
