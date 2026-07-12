@@ -1,0 +1,7 @@
+interface:
+  display_name: "macOS 内置盘空间治理"
+  short_description: "长期治理 macOS 内置盘空间：巡检、归档与迁移"
+  default_prompt: "使用 $macos-disk-space-governor 帮我审计 Mac 内置盘，并设计长期提醒、归档或迁移方案。"
+
+policy:
+  allow_implicit_invocation: true
