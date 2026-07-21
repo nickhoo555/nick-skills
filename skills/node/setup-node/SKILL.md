@@ -16,6 +16,7 @@ export http_proxy="http://${proxy_host_and_port}" https_proxy="http://${proxy_ho
 curl google.com # 有响应（如 301）证明成功
 
 # 安装 fnm
+# sudo apt install unzip
 curl -fsSL https://fnm.vercel.app/install | bash
 # 安装最新 LTS，并立即启用
 fnm install --lts --use
