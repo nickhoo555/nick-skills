@@ -24,6 +24,7 @@ fnm install --lts --use
 fnm default lts-latest
 
 # 安装 pnpm：Intel Mac 不支持这一步的自动脚本， 改用 brew install pnpm
+# apt-get install -y libatomic1
 curl -fsSL https://get.pnpm.io/install.sh | sh -
 
 # 验证
