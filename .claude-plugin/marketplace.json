@@ -12,7 +12,7 @@
       "name": "tools",
       "source": "./",
       "skills": [
-        "./skills/.experimental/tools/maintain-caddy-lan-wan",
+        "./skills/tools/maintain-caddy-lan-wan",
         "./skills/tools/macos-disk-space-governor"
       ]
     },

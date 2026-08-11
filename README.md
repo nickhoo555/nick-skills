@@ -14,6 +14,7 @@
 
 ### Tools（工具）
 
+- [`maintain-caddy-lan-wan`](./skills/tools/maintain-caddy-lan-wan/SKILL.md)：维护 Caddy 内网完整入口与公网最小暴露入口，并通过本地配置指定两套 Compose 目录。
 - [`macos-disk-space-governor`](./skills/tools/macos-disk-space-governor/SKILL.md)：为 macOS 内置磁盘建立可持续的审计、归档、迁移和清理方案。
 
 ### Node（Node.js 技术）

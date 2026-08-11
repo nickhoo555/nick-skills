@@ -1,8 +1,6 @@
 ---
 name: maintain-caddy-lan-wan
 description: 维护 Caddy 的内外网双入口：caddy-lan 面向内网并提供完整服务，caddy-wan 面向公网并只暴露明确允许的能力；支持用本地 .env 指定两套 Docker Compose 目录。用户提到 caddy-lan、caddy-wan、内外网反向代理或把服务开放到公网时使用。
-metadata:
-  internal: true
 ---
 
 # Caddy 内外网双入口
