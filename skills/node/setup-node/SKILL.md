@@ -16,6 +16,7 @@ export http_proxy="http://${proxy_host_and_port}" https_proxy="http://${proxy_ho
 curl google.com # 有响应（如 301）证明成功
 
 # 安装 fnm
+# sudo apt install unzip
 curl -fsSL https://fnm.vercel.app/install | bash
 # 安装最新 LTS，并立即启用
 fnm install --lts --use
@@ -23,6 +24,7 @@ fnm install --lts --use
 fnm default lts-latest
 
 # 安装 pnpm：Intel Mac 不支持这一步的自动脚本， 改用 brew install pnpm
+# apt-get install -y libatomic1
 curl -fsSL https://get.pnpm.io/install.sh | sh -
 
 # 验证
