@@ -1,0 +1,4 @@
+interface:
+  display_name: "Caddy LAN/WAN 分层"
+  short_description: "按本地目录维护内外网分层的 Caddy Compose 配置"
+  default_prompt: "使用 $maintain-caddy-lan-wan 配置并维护我的 Caddy 内网与公网入口。"
