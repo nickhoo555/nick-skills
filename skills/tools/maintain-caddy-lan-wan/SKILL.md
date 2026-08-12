@@ -18,12 +18,13 @@ description: 维护 Caddy 的内外网双入口：caddy-lan 面向内网并提�
 
 ## 本地配置
 
-配置文件位于本 Skill 目录的 `.env`。首次使用时，从 `.env.example` 复制并填写两套 Compose 的绝对目录；`.gitignore` 已排除 `.env`，用户路径不会进入 Git。
+配置文件位于本 Skill 目录的 `.env`；`.gitignore` 已排除它。位置可写成本地绝对路径或 `ssh 主机别名:/绝对路径`。
 
 每次维护前：
 
-1. 读取 `.env`；缺失时请用户提供两个目录并创建它。
-2. 确认目录存在，且包含 `compose.yaml`、`compose.yml`、`docker-compose.yaml` 或 `docker-compose.yml`。
-3. 先读取对应 Compose 文件，再沿挂载关系找到实际 `Caddyfile`；不要猜测配置文件位置。
+1. 检查 `.env`；缺失时从 `.env.example` 原样复制创建，立即使用其中的默认值尝试连接和定位。已有 `.env` 保持不变。
+2. 读取 `.env` 并解析本地或 SSH 位置。默认值不可用时，再向用户索取正确位置并更新 `.env`。
+3. 确认位置包含 `compose.yaml`、`compose.yml`、`docker-compose.yaml` 或 `docker-compose.yml`。
+4. 先读取对应 Compose 文件，再沿挂载关系找到实际 `Caddyfile`；不要猜测配置文件位置。
 
-只把占位配置写入 `.env.example`，把用户的真实路径留在 `.env`。
+把可公开、可复用的默认值写入 `.env.example`，把用户的覆盖值留在 `.env`。
