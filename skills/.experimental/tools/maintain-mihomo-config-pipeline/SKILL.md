@@ -26,6 +26,7 @@ metadata:
 本地配置位于本 Skill 目录的 `.env`；`.gitignore` 已排除它。只配置：
 
 - Mihomo 配置发布者的位置，以及订阅者访问 `index.yaml` 的 HTTP(S) URL；
+- 订阅组：本机订阅者及其配置目录；
 - 可选的 Sub-Store 位置及其 Web HTTP(S) URL。
 
 Mihomo 配置目录结构：
@@ -37,7 +38,14 @@ Mihomo 配置目录结构：
 └── rules/      # 可选
 ```
 
-位置可写成本地绝对路径或 `ssh://主机别名/绝对路径`。URL 必须是可访问的 `http://` 或 `https://` 地址；不使用 Sub-Store 时将它的位置和 URL 都留空。
+位置可写成本地绝对路径或 `ssh://主机别名/绝对路径`。URL 必须是可访问的 `http://` 或 `https://` 地址。
+
+`LOCAL_SUBSCRIBER` 只取以下值：
+
+- `docker`：本机 Docker 中运行的 Mihomo；
+- `clash-party`：本机 Clash Party。
+
+`LOCAL_SUBSCRIBER_CONFIG_DIR` 是所选本机订阅者的配置目录。不使用 Sub-Store 时将它的位置和 URL 都留空。
 
 每次维护前：
 
@@ -46,6 +54,7 @@ Mihomo 配置目录结构：
 3. 确认目录包含 `index.yaml`；按需读取已存在的 `proxies/` 和 `rules/`，不要求创建可选目录。
 4. 检查 `index.yaml` 的 providers、代理组和规则引用是否闭合，再用目标 Mihomo 内核校验。
 5. 请求 `MIHOMO_CONFIG_PUBLISHER_URL`，确认它返回同一份 `index.yaml`。
-6. 仅在 `SUB_STORE_LOCATION` 或 `SUB_STORE_URL` 非空且节点需要转换时检查 Sub-Store；配置一项时要求另一项也存在。
+6. 确认 `LOCAL_SUBSCRIBER` 是 `docker` 或 `clash-party`，并检查 `LOCAL_SUBSCRIBER_CONFIG_DIR` 中的订阅配置。
+7. 仅在 `SUB_STORE_LOCATION` 或 `SUB_STORE_URL` 非空且节点需要转换时检查 Sub-Store；配置一项时要求另一项也存在。
 
 把可公开、可复用的默认位置写入 `.env.example`；把用户的覆盖值留在 `.env`。
