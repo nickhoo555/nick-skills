@@ -1,8 +1,6 @@
 ---
 name: maintain-mihomo-config-pipeline
 description: 维护 Mihomo（Clash）配置管线：管理以 index.yaml 为入口、可含 proxies 和 rules 子目录的配置目录，通过 providers 聚合上游并供 Clash Party、Stash 等客户端订阅，可选接入 Sub-Store 转换节点。用户提到 Mihomo 配置发布、Clash 订阅或 providers 聚合时使用。
-metadata:
-  internal: true
 ---
 
 # Mihomo 配置管线
