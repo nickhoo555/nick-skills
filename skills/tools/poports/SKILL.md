@@ -74,7 +74,7 @@ PORT=$("$POPORTS" register my-service --app web --host mac-mini --output port)
 
 ```bash
 "$POPORTS" backup                 # 立即备份，成功校验后自动分层淘汰
-"$POPORTS" backup --if-due        # 定时入口，UTC 当天已有健康备份则跳过
+"$POPORTS" backup --if-due        # 定时入口，本机当天已有健康备份则跳过
 "$POPORTS" backup-prune           # 只预览将淘汰的文件
 "$POPORTS" backup-prune --apply   # 按同一策略实际淘汰
 ```

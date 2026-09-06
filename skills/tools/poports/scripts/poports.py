@@ -411,7 +411,7 @@ def managed_backup(repo: SqliteRepository, path: Path, args: argparse.Namespace)
         now = datetime.now(timezone.utc)
         entries = store.entries()
         if args.command == 'backup' and args.if_due:
-            today = [item for item in entries if item[1].date() == now.date()]
+            today = [item for item in entries if item[1].astimezone().date() == now.astimezone().date()]
             if today:
                 latest = max(today, key=lambda item: item[1])[0]
                 with connect(latest) as saved:
@@ -465,7 +465,7 @@ def parser() -> argparse.ArgumentParser:
             sub.add_argument('--backup-dir', help='覆盖托管备份目录，默认 <数据库>.backups')
         if name == 'backup':
             sub.add_argument('file', nargs='?', help='指定文件：独立备份，不参与自动淘汰')
-            sub.add_argument('--if-due', action='store_true', help='UTC 当天已有健康备份则跳过，供每日调度')
+            sub.add_argument('--if-due', action='store_true', help='本机当天已有健康备份则跳过，供每日调度')
         if name == 'backup-prune':
             sub.add_argument('--apply', action='store_true', help='实际删除；默认只预览')
         if name == 'register':

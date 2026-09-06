@@ -394,6 +394,25 @@ class PortTests(unittest.TestCase):
         self.assertEqual(self.cli('backup', '--if-due')['status'], 'backed-up')
         self.assertTrue(future.exists())
 
+    def test_daily_schedule_uses_local_date_not_utc_date(self):
+        self.init()
+        store = p.BackupStore(self.db)
+        store.directory.mkdir()
+        yesterday = datetime(2026, 9, 6, 8, tzinfo=timezone.utc)  # Shanghai Sep 6, 16:00.
+        now = datetime(2026, 9, 6, 19, tzinfo=timezone.utc)      # Shanghai Sep 7, 03:00.
+        with p.connect(self.db) as repo:
+            p.snapshot(repo, store.next_path(yesterday))
+        try:
+            with patch.dict(os.environ, {'TZ': 'Asia/Shanghai'}):
+                p.time.tzset()
+                with patch.object(p, 'datetime', wraps=datetime) as clock:
+                    clock.now.return_value = now
+                    with p.connect(self.db) as repo:
+                        result = p.managed_backup(repo, self.db, p.parser().parse_args(['backup', '--if-due']))
+                self.assertEqual(result['status'], 'backed-up')
+        finally:
+            p.time.tzset()
+
 
 if __name__ == '__main__':
     unittest.main()
