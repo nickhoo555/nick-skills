@@ -1,6 +1,6 @@
 ---
 name: poports
-description: 用 SQLite 统一登记、分配、查询和释放服务端口，兼容 CSV 导入导出；为新服务注册端口、避免 Agent 并发重复分配或维护端口台账时使用，提供调用方一键执行的幂等 CLI。
+description: 用 SQLite 统一登记、分配、查询和释放服务端口，兼容 CSV 导入导出及分层备份；为新服务注册端口、避免 Agent 并发重复分配、维护或备份端口台账时使用。
 ---
 
 # poports
@@ -9,7 +9,7 @@ SQLite 是唯一真源；CSV 只用于显式导入、导出，不做双向自动
 
 ## 接入与一键注册
 
-将 `POPORTS` 设为本 Skill 的 `scripts/poports` 绝对路径。启动器优先用 `uv`，不可用时用 `python3`；要求 Python 3.10+、标准库，无需数据库服务。
+将 `POPORTS` 设为本 Skill 的 `scripts/poports` 绝对路径。启动器优先用 `uv`，不可用时用 `python3`；要求 macOS/Linux、Python 3.10+、标准库，无需数据库服务。
 
 首次接入现有数据库：
 
@@ -69,6 +69,19 @@ PORT=$("$POPORTS" register my-service --app web --host mac-mini --output port)
 数据库、备份及导出文件创建为仅当前用户可读写。导出与备份只写新文件，拒绝覆盖；批量维护前执行 `backup`。查询可能返回备注中的私人信息，报告只展示必要字段，不把真实台账、导出、备份或凭据提交进 Skill 仓库。
 
 仅从单机本地文件系统访问数据库；跨机器通过 SSH 到该机执行 CLI，不通过 SMB／同步盘多机直写。恢复备份前暂停所有写入并明确选择版本。
+
+## 手动与每日备份
+
+```bash
+"$POPORTS" backup                 # 立即备份，成功校验后自动分层淘汰
+"$POPORTS" backup --if-due        # 定时入口，UTC 当天已有健康备份则跳过
+"$POPORTS" backup-prune           # 只预览将淘汰的文件
+"$POPORTS" backup-prune --apply   # 按同一策略实际淘汰
+```
+
+用户启用定时备份时，默认每天执行一次 `backup --if-due`；在 Codex 中用自动任务配置每日调度，绑定本机已安装脚本和数据库的绝对路径，避免依赖当前目录或临时 PATH。先验证一次手动备份，再开启调度；只报告故障或需要用户介入的情况。CLI 本身不会偷偷安装定时器；宿主调度不可用时如实说明，不声称已经启用。
+
+保留规则、独立备份保护及自定义目录见 [references/backups.md](references/backups.md)。
 
 ## 验证
 

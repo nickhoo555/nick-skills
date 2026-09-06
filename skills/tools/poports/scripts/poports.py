@@ -6,6 +6,9 @@ import argparse
 from contextlib import contextmanager
 import csv
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+import fcntl
+import hashlib
 import io
 import json
 import os
@@ -14,7 +17,9 @@ import re
 import sqlite3
 import sys
 import tempfile
+import time
 from typing import Protocol
+import uuid
 
 FIELDS = '端口,分类,分组,服务,应用,主机,logo,权限,内网地址,域名,备注,截图,定时'.split(',')
 IDENTITY = ('服务', '应用', '主机')
@@ -306,6 +311,135 @@ def cli_port(value: str) -> int:
         raise argparse.ArgumentTypeError(str(error)) from None
 
 
+def snapshot(repo: SqliteRepository, output: Path) -> None:
+    with destination(output) as temporary:
+        target = sqlite3.connect(temporary)
+        try:
+            repo.db.backup(target)
+            if target.execute('PRAGMA integrity_check').fetchall() != [('ok',)]:
+                raise RegistryError('备份完整性检查失败；保留全部旧备份')
+        finally:
+            target.close()
+
+
+@dataclass(frozen=True)
+class Retention:
+    # Cumulative horizons; older than monthly_months retains one per year forever.
+    all_days: int = 7
+    daily_days: int = 30
+    weekly_weeks: int = 12
+    monthly_months: int = 24
+
+
+def retention_plan(entries: list[tuple[Path, datetime]], now: datetime,
+                   policy: Retention = Retention()) -> tuple[list[Path], list[Path]]:
+    """Pure policy: keep newest in each UTC calendar bucket, protect future dates."""
+    keep, remove, seen = [], [], set()
+    now = now.astimezone(timezone.utc)
+    for path, stamp in sorted(entries, key=lambda item: (item[1], item[0].name), reverse=True):
+        stamp = stamp.astimezone(timezone.utc)
+        age = now - stamp
+        if age < timedelta(days=policy.all_days):
+            keep.append(path)
+            continue
+        if age < timedelta(days=policy.daily_days):
+            key = ('day', stamp.date())
+        elif age < timedelta(weeks=policy.weekly_weeks):
+            key = ('week', *stamp.isocalendar()[:2])
+        elif (now.year - stamp.year) * 12 + now.month - stamp.month < policy.monthly_months:
+            key = ('month', stamp.year, stamp.month)
+        else:
+            key = ('year', stamp.year)
+        if key in seen:
+            remove.append(path)
+        else:
+            keep.append(path)
+            seen.add(key)
+    return keep, remove
+
+
+class BackupStore:
+    """Manage only the exact filename namespace for one resolved database path."""
+    def __init__(self, database: Path, directory: str | None = None):
+        self.directory = (Path(directory).expanduser().resolve() if directory else
+                          database.with_name(database.name + '.backups'))
+        digest = hashlib.sha256(str(database.resolve()).encode()).hexdigest()[:16]
+        self.prefix = f'poports-{digest}-'
+
+    @contextmanager
+    def locked(self):
+        self.directory.mkdir(parents=True, mode=0o700, exist_ok=True)
+        lock = self.directory / (self.prefix + 'lock')
+        fd = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, 'a') as stream:
+            deadline = time.monotonic() + 10
+            while True:
+                try:
+                    fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError:
+                    if time.monotonic() >= deadline:
+                        raise RegistryError('等待备份锁超时') from None
+                    time.sleep(0.05)
+            try:
+                yield
+            finally:
+                fcntl.flock(stream, fcntl.LOCK_UN)
+
+    def entries(self) -> list[tuple[Path, datetime]]:
+        entries = []
+        pattern = re.compile(re.escape(self.prefix) + r'(\d{8}T\d{12}Z)-[0-9a-f]{32}\.sqlite3')
+        for path in self.directory.iterdir():
+            match = pattern.fullmatch(path.name)
+            if match is None or path.is_symlink() or not path.is_file():
+                continue
+            try:
+                stamp = datetime.strptime(match[1], '%Y%m%dT%H%M%S%fZ').replace(tzinfo=timezone.utc)
+            except ValueError:
+                continue
+            entries.append((path, stamp))
+        return entries
+
+    def next_path(self, now: datetime) -> Path:
+        stamp = now.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
+        return self.directory / f'{self.prefix}{stamp}-{uuid.uuid4().hex}.sqlite3'
+
+
+def managed_backup(repo: SqliteRepository, path: Path, args: argparse.Namespace) -> dict:
+    store = BackupStore(path, args.backup_dir)
+    with store.locked():
+        now = datetime.now(timezone.utc)
+        entries = store.entries()
+        if args.command == 'backup' and args.if_due:
+            today = [item for item in entries if item[1].date() == now.date()]
+            if today:
+                latest = max(today, key=lambda item: item[1])[0]
+                with connect(latest) as saved:
+                    if saved.db.execute('PRAGMA integrity_check').fetchall() != [('ok',)]:
+                        raise RegistryError('当天备份损坏；保留旧文件，请检查后手动 backup')
+                return {'status': 'not-due', 'file': str(latest)}
+        created = None
+        if args.command == 'backup':
+            created = store.next_path(now)
+            snapshot(repo, created)
+            entries.append((created, now))
+        keep, remove = retention_plan(entries, now)
+        apply = args.command == 'backup' or args.apply
+        if apply and remove:
+            # Standalone pruning also requires a healthy latest recovery point.
+            latest = max(entries, key=lambda item: item[1])[0]
+            with connect(latest) as saved:
+                if saved.db.execute('PRAGMA integrity_check').fetchall() != [('ok',)]:
+                    raise RegistryError('最新备份损坏；取消淘汰')
+            for old in remove:
+                if old.is_symlink() or not old.is_file():
+                    raise RegistryError('备份目录在清理期间发生外部变更；停止清理')
+                old.unlink()
+        return {'status': 'backed-up' if created else ('pruned' if apply else 'dry-run'),
+                'file': str(created) if created else None, 'directory': str(store.directory),
+                'kept': len(keep), 'removed' if apply else 'would_remove': [str(item) for item in remove]}
+
+
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(description=__doc__)
     root.add_argument('--db', help='覆盖 SQLite 路径；也可放在子命令之后')
@@ -317,15 +451,23 @@ def parser() -> argparse.ArgumentParser:
         'list': '查询登记', 'get': '按端口读取登记',
         'update': '修改指定端口的字段', 'release': '删除登记（不停止服务）',
         'import-csv': '事务式增量导入；冲突全量回滚，不覆盖',
-        'export-csv': '导出 CSV 到新文件', 'backup': '一致性快照到新数据库文件',
+        'export-csv': '导出 CSV 到新文件', 'backup': '手动或每日备份；省略文件则自动命名并分层淘汰',
+        'backup-prune': '预览分层淘汰；--apply 才删除',
         'check': '检查数据库完整性并汇总',
     }.items():
         sub = commands.add_parser(name, help=help_text)
         sub.add_argument('--db', default=argparse.SUPPRESS, help='覆盖数据库路径')
         if name == 'init':
             sub.add_argument('--from', dest='source', help='导入已有 CSV，源文件保持不变')
-        if name in {'import-csv', 'export-csv', 'backup'}:
+        if name in {'import-csv', 'export-csv'}:
             sub.add_argument('file')
+        if name in {'backup', 'backup-prune'}:
+            sub.add_argument('--backup-dir', help='覆盖托管备份目录，默认 <数据库>.backups')
+        if name == 'backup':
+            sub.add_argument('file', nargs='?', help='指定文件：独立备份，不参与自动淘汰')
+            sub.add_argument('--if-due', action='store_true', help='UTC 当天已有健康备份则跳过，供每日调度')
+        if name == 'backup-prune':
+            sub.add_argument('--apply', action='store_true', help='实际删除；默认只预览')
         if name == 'register':
             sub.add_argument('service')
             sub.add_argument('--app', default='')
@@ -353,6 +495,10 @@ def execute(args: argparse.Namespace) -> dict:
     imported = decode(Path(args.file).expanduser().read_bytes()) if args.command == 'import-csv' else None
     write = args.command in {'register', 'update', 'release', 'import-csv'}
     with connect(path, write=write) as repo:
+        if args.command == 'backup-prune' or (args.command == 'backup' and args.file is None):
+            return managed_backup(repo, path, args)
+        if args.command == 'backup' and (args.if_due or args.backup_dir):
+            raise RegistryError('指定文件的独立备份不能组合 --if-due 或 --backup-dir')
         if args.command == 'configure':
             repo.fields()
             config = config_path()
@@ -380,15 +526,11 @@ def execute(args: argparse.Namespace) -> dict:
             return repo.import_table(imported)
         if args.command in {'export-csv', 'backup'}:
             output = Path(args.file).expanduser().resolve()
-            with destination(output) as temporary:
-                if args.command == 'export-csv':
+            if args.command == 'export-csv':
+                with destination(output) as temporary:
                     temporary.write_bytes(encode(repo.table()))
-                else:
-                    target = sqlite3.connect(temporary)
-                    try:
-                        repo.db.backup(target)
-                    finally:
-                        target.close()
+            else:
+                snapshot(repo, output)
             return {'status': 'exported' if args.command == 'export-csv' else 'backed-up', 'file': str(output)}
         integrity = [row[0] for row in repo.db.execute('PRAGMA integrity_check')]
         if integrity != ['ok']:

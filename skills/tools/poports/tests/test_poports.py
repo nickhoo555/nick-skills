@@ -1,5 +1,6 @@
 import concurrent.futures
 from contextlib import closing
+from datetime import datetime, timedelta, timezone
 import importlib.util
 import json
 import os
@@ -9,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'scripts/poports.py'
 spec = importlib.util.spec_from_file_location('poports', SCRIPT)
@@ -261,6 +263,136 @@ class PortTests(unittest.TestCase):
                                 env=self.env, capture_output=True, text=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)['status'], 'ok')
+
+    def test_managed_backup_and_daily_due(self):
+        self.init()
+        first = self.cli('backup')
+        self.assertEqual(first['status'], 'backed-up')
+        self.assertEqual(self.cli('backup', '--if-due')['status'], 'not-due')
+        second = self.cli('backup')
+        self.assertNotEqual(first['file'], second['file'])
+        self.assertEqual(second['kept'], 2)
+        self.assertEqual(self.cli('check', '--db', second['file'])['status'], 'ok')
+        self.assertEqual(Path(second['file']).stat().st_mode & 0o777, 0o600)
+
+    def test_retention_tiers_keep_latest_in_utc_buckets(self):
+        now = datetime(2026, 9, 6, 12, tzinfo=timezone.utc)
+        stamps = [
+            '2026-09-06T11:00', '2026-09-06T10:00',  # Recent: keep both.
+            '2026-08-20T11:00', '2026-08-20T10:00',  # Daily: keep newest.
+            '2026-07-21T11:00', '2026-07-20T11:00',  # ISO week: keep newest.
+            '2026-03-20T11:00', '2026-03-05T11:00',  # Monthly: keep newest.
+            '2023-12-20T11:00', '2023-01-05T11:00',  # Yearly: keep newest.
+            '2022-02-03T11:00',                      # Older years retained.
+            '2027-01-01T11:00',                      # Future date protected.
+        ]
+        entries = [(Path(str(i)), datetime.fromisoformat(value).replace(tzinfo=timezone.utc))
+                   for i, value in enumerate(stamps)]
+        keep, remove = p.retention_plan(entries, now)
+        self.assertEqual(set(remove), {Path(str(i)) for i in [3, 5, 7, 9]})
+        self.assertEqual(set(keep) | set(remove), {item[0] for item in entries})
+
+    def test_retention_boundaries_iso_year_and_leap_day(self):
+        now = datetime(2026, 9, 6, 12, tzinfo=timezone.utc)
+        entries = [(Path('a'), now-timedelta(days=7)),
+                   (Path('b'), now-timedelta(days=7, hours=1)),
+                   (Path('c'), datetime(2024, 2, 29, tzinfo=timezone.utc)),
+                   (Path('d'), datetime(2024, 1, 1, tzinfo=timezone.utc))]
+        keep, remove = p.retention_plan(entries, now)
+        self.assertEqual(set(remove), {Path('b'), Path('d')})
+        # 2025-12-29 and 2026-01-01 share ISO week 2026-W01.
+        keep, remove = p.retention_plan([
+            (Path('dec'), datetime(2025, 12, 29, tzinfo=timezone.utc)),
+            (Path('jan'), datetime(2026, 1, 1, tzinfo=timezone.utc)),
+        ], datetime(2026, 2, 10, tzinfo=timezone.utc))
+        self.assertEqual(remove, [Path('dec')])
+
+    def old_backups(self):
+        self.init()
+        store = p.BackupStore(self.db)
+        store.directory.mkdir()
+        # Both are in one daily bucket, independent of today's UTC hour.
+        day = (datetime.now(timezone.utc)-timedelta(days=15)).replace(hour=10, minute=0, second=0, microsecond=0)
+        paths = [store.next_path(day), store.next_path(day+timedelta(hours=1))]
+        with p.connect(self.db) as repo:
+            for path in paths:
+                p.snapshot(repo, path)
+        return store, paths
+
+    def test_pruning_preview_apply_and_foreign_files(self):
+        store, paths = self.old_backups()
+        foreign = store.directory / 'manual-important.sqlite3'
+        foreign.write_bytes(b'do not delete')
+        other_store = p.BackupStore(self.root/'another.sqlite3', str(store.directory))
+        other = other_store.next_path(datetime(2020, 1, 1, tzinfo=timezone.utc))
+        other.write_bytes(b'other database')
+        malformed = store.directory / (store.prefix + '20269999T999999999999Z-' + 'a'*32 + '.sqlite3')
+        malformed.write_bytes(b'invalid date')
+        linked = store.next_path(datetime(2020, 1, 1, tzinfo=timezone.utc))
+        linked.symlink_to(foreign)
+        preview = self.cli('backup-prune')
+        self.assertEqual(preview['would_remove'], [str(paths[0])])
+        self.assertTrue(paths[0].exists())
+        result = self.cli('backup-prune', '--apply')
+        self.assertEqual(result['removed'], [str(paths[0])])
+        self.assertFalse(paths[0].exists())
+        for path in [paths[1], foreign, other, malformed, linked]:
+            self.assertTrue(path.exists())
+
+    def test_failed_snapshot_never_prunes(self):
+        store, paths = self.old_backups()
+        args = p.parser().parse_args(['backup'])
+        with p.connect(self.db) as repo:
+            with patch.object(p, 'snapshot', side_effect=OSError('injected failure')):
+                with self.assertRaises(OSError):
+                    p.managed_backup(repo, self.db, args)
+        self.assertTrue(all(path.exists() for path in paths))
+        self.assertEqual(len(store.entries()), 2)
+
+    def test_successful_backup_prunes_old_redundant_snapshots(self):
+        store, paths = self.old_backups()
+        result = self.cli('backup')
+        self.assertEqual(result['removed'], [str(paths[0])])
+        self.assertTrue(Path(result['file']).exists())
+        self.assertTrue(paths[1].exists())
+
+    def test_corrupt_latest_prevents_standalone_pruning(self):
+        store, paths = self.old_backups()
+        paths[1].write_bytes(b'corrupt database')
+        self.cli('backup-prune', '--apply', ok=False)
+        self.assertTrue(all(path.exists() for path in paths))
+
+    def test_corrupt_today_is_not_silently_skipped(self):
+        self.init()
+        result = self.cli('backup')
+        Path(result['file']).write_bytes(b'corrupt')
+        self.cli('backup', '--if-due', ok=False)
+
+    def test_backup_directory_override_and_explicit_file_protection(self):
+        self.init()
+        directory = self.root/'custom'
+        result = self.cli('backup', '--backup-dir', str(directory))
+        self.assertEqual(Path(result['file']).parent, directory)
+        manual = directory/'manual.sqlite3'
+        self.cli('backup', str(manual))
+        self.cli('backup-prune', '--backup-dir', str(directory), '--apply')
+        self.assertTrue(manual.exists())
+        self.cli('backup', str(manual), '--if-due', ok=False)
+
+    def test_concurrent_daily_backups_create_one_snapshot(self):
+        self.init()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+            results = list(pool.map(lambda _: self.cli('backup', '--if-due'), range(8)))
+        self.assertEqual(sum(row['status']=='backed-up' for row in results), 1)
+        self.assertEqual(len({row['file'] for row in results}), 1)
+
+    def test_future_snapshots_do_not_block_daily_backup(self):
+        store, paths = self.old_backups()
+        future = store.next_path(datetime.now(timezone.utc)+timedelta(days=100))
+        with p.connect(self.db) as repo:
+            p.snapshot(repo, future)
+        self.assertEqual(self.cli('backup', '--if-due')['status'], 'backed-up')
+        self.assertTrue(future.exists())
 
 
 if __name__ == '__main__':
