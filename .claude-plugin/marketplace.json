@@ -14,7 +14,8 @@
       "skills": [
         "./skills/tools/maintain-mihomo-config-pipeline",
         "./skills/tools/maintain-caddy-lan-wan",
-        "./skills/tools/macos-disk-space-governor"
+        "./skills/tools/macos-disk-space-governor",
+        "./skills/tools/poports"
       ]
     },
     {

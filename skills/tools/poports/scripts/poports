@@ -1,0 +1,14 @@
+#!/bin/sh
+# Resolve the sibling Python entrypoint even when this launcher is symlinked.
+set -eu
+script=$0
+while [ -L "$script" ]; do
+  directory=$(CDPATH= cd -- "$(dirname -- "$script")" && pwd)
+  target=$(readlink "$script")
+  case $target in /*) script=$target ;; *) script=$directory/$target ;; esac
+done
+directory=$(CDPATH= cd -- "$(dirname -- "$script")" && pwd)
+if command -v uv >/dev/null 2>&1; then
+  exec uv run --no-project python "$directory/poports.py" "$@"
+fi
+exec python3 "$directory/poports.py" "$@"

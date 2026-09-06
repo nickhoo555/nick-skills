@@ -14,6 +14,7 @@
 
 ### Tools（工具）
 
+- [`poports`](./skills/tools/poports/SKILL.md)：用 SQLite 管理端口台账，提供幂等注册、并发安全分配、查询、释放及 CSV 导入导出 CLI。
 - [`maintain-caddy-lan-wan`](./skills/tools/maintain-caddy-lan-wan/SKILL.md)：维护 Caddy 内网完整入口与公网最小暴露入口，并通过本地配置指定两套 Compose 目录。
 - [`maintain-mihomo-config-pipeline`](./skills/tools/maintain-mihomo-config-pipeline/SKILL.md)：维护 Mihomo 配置发布、providers 聚合、本机订阅及可选 Sub-Store 管线。
 - [`macos-disk-space-governor`](./skills/tools/macos-disk-space-governor/SKILL.md)：为 macOS 内置磁盘建立可持续的审计、归档、迁移和清理方案。
