@@ -1,0 +1,4 @@
+interface:
+  display_name: "飞书妙记原始文字记录"
+  short_description: "提取飞书妙记原始 JSON、词级时间戳与发言人映射，并校验文字记录完整性"
+  default_prompt: "用 $feishu-minutes-extract 提取我指定的飞书妙记文字记录，保留原始响应并检查完整性。"

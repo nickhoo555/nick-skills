@@ -1,0 +1,12 @@
+{
+  "name": "feishu-minutes-extract",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.18.0" },
+  "scripts": {
+    "test": "node --test tests/*.test.ts",
+    "extract": "node scripts/cli.ts",
+    "build:browser": "node scripts/build-browser.ts"
+  }
+}
