@@ -14,6 +14,7 @@
 
 ### Tools（工具）
 
+- [`feishu-minutes-extract`](./skills/tools/feishu-minutes-extract/SKILL.md)：提取飞书妙记 Web 原始文字记录 JSON、发言人映射与词级时间戳，支持浏览器采集、HAR 离线解析和完整性校验。
 - [`poports`](./skills/tools/poports/SKILL.md)：用 SQLite 管理端口台账，提供幂等注册、并发安全分配、CSV 导入导出，以及手动／每日备份和分层淘汰。
 - [`maintain-caddy-lan-wan`](./skills/tools/maintain-caddy-lan-wan/SKILL.md)：维护 Caddy 内网完整入口与公网最小暴露入口，并通过本地配置指定两套 Compose 目录。
 - [`maintain-mihomo-config-pipeline`](./skills/tools/maintain-mihomo-config-pipeline/SKILL.md)：维护 Mihomo 配置发布、providers 聚合、本机订阅及可选 Sub-Store 管线。
