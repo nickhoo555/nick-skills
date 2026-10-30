@@ -15,7 +15,8 @@
         "./skills/tools/maintain-mihomo-config-pipeline",
         "./skills/tools/maintain-caddy-lan-wan",
         "./skills/tools/poports",
-        "./skills/tools/feishu-minutes-extract"
+        "./skills/tools/feishu-minutes-extract",
+        "./skills/.experimental/tools/local-date-dir"
       ]
     },
     {

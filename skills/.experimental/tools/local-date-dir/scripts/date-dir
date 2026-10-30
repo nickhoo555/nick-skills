@@ -1,0 +1,195 @@
+#!/bin/sh
+# Pure POSIX shell: path selection and effects stay separate; main composes them.
+set -eu
+
+usage() {
+  cat <<'HELP'
+用法：
+  date-dir path|create --root DIRECTORY [--date YYYY-MM-DD]
+                      [--timezone IANA_ZONE] [--layout nested|flat]
+  date-dir ensure DIRECTORY
+  date-dir open DIRECTORY [--opener EXECUTABLE]
+
+path 只计算；ensure 确保目录存在；create 组合两者；open 只打开已有目录。
+覆盖顺序：CLI > DATE_DIR_ROOT/DATE/LAYOUT/TIMEZONE/OPENER > 默认值。
+默认日期为系统本地今天；默认布局 nested：YYYY/YYYY-MM/YYYY-MM-DD。
+flat 布局为 YYYY-MM-DD。根目录无默认值。--date 会忽略时区设置。
+成功输出一行绝对路径；退出码：0 成功，1 操作失败，2 参数错误。
+HELP
+}
+
+invalid() { printf 'date-dir: %s\n' "$*" >&2; exit 2; }
+failed() { printf 'date-dir: %s\n' "$*" >&2; exit 1; }
+
+# Shell arithmetic validates Gregorian dates without BSD/GNU date parsing.
+validate_date() (
+  case $1 in
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
+    *) invalid '日期必须为 YYYY-MM-DD' ;;
+  esac
+  year=${1%%-*}; rest=${1#*-}; month=${rest%%-*}; day=${rest#*-}
+  y=$((1$year - 10000)); m=$((1$month - 100)); d=$((1$day - 100))
+  [ "$y" -ge 1 ] && [ "$m" -ge 1 ] && [ "$m" -le 12 ] || invalid "日期不存在：$1"
+  case $m in
+    4|6|9|11) maximum=30 ;;
+    2)
+      maximum=28
+      if [ "$((y % 400))" -eq 0 ] || { [ "$((y % 4))" -eq 0 ] && [ "$((y % 100))" -ne 0 ]; }; then
+        maximum=29
+      fi ;;
+    *) maximum=31 ;;
+  esac
+  [ "$d" -ge 1 ] && [ "$d" -le "$maximum" ] || invalid "日期不存在：$1"
+)
+
+select_date() (
+  if [ "$1" = x ]; then
+    stamp=$2
+  else
+    if [ "$3" = x ]; then
+      zone=$4
+      case $zone in
+        ''|/*|*[!A-Za-z0-9_+/-]*|..|../*|*/..|*/../*|*//*) invalid "不可用的 IANA 时区：$zone" ;;
+      esac
+      zonefile=/usr/share/zoneinfo/$zone
+      [ -f "$zonefile" ] || invalid "不可用的 IANA 时区：$zone"
+      # Reject non-zone files (for example leapseconds) rather than silently use UTC.
+      [ "$(dd if="$zonefile" bs=4 count=1 2>/dev/null)" = TZif ] || invalid "不可用的 IANA 时区：$zone"
+      stamp=$(TZ=":$zonefile" date '+%Y-%m-%d') || failed '无法读取日期'
+    else
+      stamp=$(date '+%Y-%m-%d') || failed '无法读取日期'
+    fi
+  fi
+  validate_date "$stamp"
+  printf '%s\n' "$stamp"
+)
+
+absolute_path() (
+  [ -n "$1" ] || invalid '路径必须非空'
+  value=$1
+  case $value in
+    \~|\~/*)
+      [ -n "${HOME-}" ] || invalid '展开 ~ 需要 HOME'
+      value=$HOME${value#\~} ;;
+  esac
+  case $value in
+    /*) ;;
+    *)
+      # A sentinel preserves trailing newlines so the single-line check can reject them.
+      cwd=$(pwd -P && printf '.') || failed '无法读取工作目录'
+      cwd=${cwd%.}; cwd=${cwd%'
+'}
+      value=$cwd/$value ;;
+  esac
+  cr=$(printf '\r')
+  case $value in *'
+'*|*"$cr"*) invalid '路径不能含换行符' ;; esac
+  # Lexical normalization, including missing paths; no cd/mkdir or symlink resolution.
+  rest=$value; result=
+  while [ -n "$rest" ]; do
+    part=${rest%%/*}
+    case $rest in */*) rest=${rest#*/} ;; *) rest= ;; esac
+    case $part in
+      ''|.) ;;
+      ..) result=${result%/*} ;;
+      *) result=$result/$part ;;
+    esac
+  done
+  printf '%s\n' "${result:-/}"
+)
+
+date_path() (
+  root=${1%/}; stamp=$2
+  case $3 in
+    nested) printf '%s/%s/%s/%s\n' "$root" "${stamp%%-*}" "${stamp%-*}" "$stamp" ;;
+    flat) printf '%s/%s\n' "$root" "$stamp" ;;
+    *) invalid 'layout 必须是 nested 或 flat' ;;
+  esac
+)
+
+ensure_directory() { mkdir -p "$1" || exit 1; }
+open_directory() {
+  [ -d "$1" ] || failed "目录不存在或不是目录：$1"
+  # One executable + one path argument; never evaluate a shell command string.
+  "$2" "$1" >&2 || exit 1
+}
+
+main() {
+  [ "$#" -gt 0 ] || { usage >&2; exit 2; }
+  command=$1; shift
+  case $command in
+    -h|--help) usage; exit 0 ;;
+    path|create)
+      root=${DATE_DIR_ROOT-}; day_set=${DATE_DIR_DATE+x}; day=${DATE_DIR_DATE-}
+      zone_set=${DATE_DIR_TIMEZONE+x}; zone=${DATE_DIR_TIMEZONE-}
+      layout=${DATE_DIR_LAYOUT-nested}
+      while [ "$#" -gt 0 ]; do
+        case $1 in
+          -h|--help) usage; exit 0 ;;
+          --root|--date|--timezone|--layout)
+            [ "$#" -ge 2 ] || invalid "$1 缺少值"
+            case $2 in -?*) invalid "$1 缺少值；以 - 开头的值请使用 $1=VALUE" ;; esac
+            option=$1; value=$2; shift 2 ;;
+          --root=*|--date=*|--timezone=*|--layout=*)
+            option=${1%%=*}; value=${1#*=}; shift ;;
+          *) invalid "未知参数：$1" ;;
+        esac
+        case $option in
+          --root) root=$value ;;
+          --date) day_set=x; day=$value ;;
+          --timezone) zone_set=x; zone=$value ;;
+          --layout) layout=$value ;;
+        esac
+      done
+      [ -n "$root" ] || invalid '请指定非空的 --root 或 DATE_DIR_ROOT'
+      stamp=$(select_date "$day_set" "$day" "$zone_set" "$zone")
+      root=$(absolute_path "$root")
+      target=$(date_path "$root" "$stamp" "$layout")
+      [ "$command" != create ] || ensure_directory "$target"
+      ;;
+    ensure|open)
+      directory_set=; directory=; positional=
+      opener_set=${DATE_DIR_OPENER+x}; opener=${DATE_DIR_OPENER-}
+      while [ "$#" -gt 0 ]; do
+        if [ "$positional" != x ]; then
+          case $1 in
+            -h|--help) usage; exit 0 ;;
+            --) positional=x; shift; continue ;;
+            --opener|--opener=*)
+              [ "$command" = open ] || invalid 'ensure 不接受 --opener'
+              case $1 in
+                --opener)
+                  [ "$#" -ge 2 ] || invalid '--opener 缺少值'
+                  case $2 in -?*) invalid '--opener 缺少值；以 - 开头的值请使用 --opener=VALUE' ;; esac
+                  opener=$2; shift 2 ;;
+                *) opener=${1#*=}; shift ;;
+              esac
+              opener_set=x; continue ;;
+            -*) invalid "未知参数：$1" ;;
+          esac
+        fi
+        [ "$directory_set" != x ] || invalid '只能指定一个目录'
+        directory_set=x; directory=$1; shift
+      done
+      [ "$directory_set" = x ] || invalid '请指定目录'
+      target=$(absolute_path "$directory")
+      if [ "$command" = ensure ]; then
+        ensure_directory "$target"
+      else
+        if [ "$opener_set" != x ]; then
+          case $(uname -s) in
+            Darwin) opener=/usr/bin/open ;;
+            Linux) opener=xdg-open ;;
+            *) invalid '当前系统需要通过 --opener 指定打开程序' ;;
+          esac
+        fi
+        [ -n "$opener" ] || invalid 'opener 必须是单个可执行文件名或路径'
+        open_directory "$target" "$opener"
+      fi
+      ;;
+    *) invalid "未知子命令：$command" ;;
+  esac
+  printf '%s\n' "$target"
+}
+
+main "$@"
