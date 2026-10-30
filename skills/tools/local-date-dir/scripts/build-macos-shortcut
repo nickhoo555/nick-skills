@@ -1,10 +1,10 @@
 #!/bin/sh
-# Build one portable artifact; the user configures the CLI path after import.
+# Build one portable artifact; the user configures both paths during import.
 set -eu
 usage() {
   printf '%s\n' '用法：build-macos-shortcut [--sign] OUTPUT' \
     '默认仅生成本地未签名 plist；--sign 将通用模板发送给 Apple 校验，生成可导入的 .shortcut。' \
-    '不绑定本机脚本路径；导入时填写 date-dir 的绝对路径。'
+    '不绑定本机路径；导入时一次填写 date-dir 和根目录的绝对路径。'
 }
 invalid() { printf 'build-macos-shortcut: %s\n' "$*" >&2; exit 2; }
 failed() { printf 'build-macos-shortcut: %s\n' "$*" >&2; exit 1; }

@@ -18,7 +18,9 @@ run() {
 run 0 "$builder" "$work/generated.plist"
 equal "$(cat "$work/stdout")" "$work/generated.plist"
 equal "$(plutil -extract WFWorkflowActions raw -o - "$work/generated.plist")" 5
-equal "$(plutil -extract WFWorkflowActions.2.WFWorkflowActionParameters.WFPickingMode raw -o - "$work/generated.plist")" Folders
+equal "$(plutil -extract WFWorkflowActions.2.WFWorkflowActionIdentifier raw -o - "$work/generated.plist")" is.workflow.actions.gettext
+equal "$(plutil -extract WFWorkflowActions.2.WFWorkflowActionParameters.WFTextActionText raw -o - "$work/generated.plist")" /path/to/archive
+if grep -E 'is.workflow.actions.(file.select|choosefrommenu)' "$work/generated.plist"; then fail '运行时不得弹出选择器或菜单'; fi
 equal "$(plutil -extract WFWorkflowActions.4.WFWorkflowActionParameters.Shell raw -o - "$work/generated.plist")" /bin/sh
 equal "$(plutil -extract WFWorkflowActions.4.WFWorkflowActionParameters.InputMode raw -o - "$work/generated.plist")" 'as arguments'
 equal "$(plutil -extract WFWorkflowActions.0.WFWorkflowActionParameters.UUID raw -o - "$work/generated.plist")" \
@@ -28,8 +30,12 @@ equal "$(plutil -extract WFWorkflowActions.2.WFWorkflowActionParameters.UUID raw
 equal "$(plutil -extract WFWorkflowActions.4.WFWorkflowActionParameters.Input.Value.VariableName raw -o - "$work/generated.plist")" DateDirArguments
 equal "$(plutil -extract WFWorkflowImportQuestions.0.ActionIndex raw -o - "$work/generated.plist")" 0
 equal "$(plutil -extract WFWorkflowImportQuestions.0.ParameterKey raw -o - "$work/generated.plist")" WFTextActionText
+equal "$(plutil -extract WFWorkflowImportQuestions raw -o - "$work/generated.plist")" 2
+equal "$(plutil -extract WFWorkflowImportQuestions.1.ActionIndex raw -o - "$work/generated.plist")" 2
+equal "$(plutil -extract WFWorkflowImportQuestions.1.ParameterKey raw -o - "$work/generated.plist")" WFTextActionText
+equal "$(plutil -extract WFWorkflowImportQuestions.1.DefaultValue raw -o - "$work/generated.plist")" /path/to/archive
 equal "$(plutil -extract WFWorkflowActions.0.WFWorkflowActionParameters.WFTextActionText raw -o - "$work/generated.plist")" /path/to/date-dir
-printf 'PASS: import question configures path; native variables preserve argument order\n'
+printf 'PASS: import questions configure both paths once; no runtime picker or menu\n'
 
 run 0 env DATE_DIR=/nonexistent/machine-specific/path "$builder" "$work/portable.plist"
 cmp -s "$work/generated.plist" "$work/portable.plist" || fail '生成结果不应依赖本机 DATE_DIR'
@@ -59,6 +65,7 @@ run 2 sh "$work/run.sh"
 run 2 sh "$work/run.sh" "$script_dir/date-dir"
 run 2 sh "$work/run.sh" "$script_dir/date-dir" "$work" "$work"
 run 2 sh "$work/run.sh" relative/date-dir "$work"
+run 2 sh "$work/run.sh" "$script_dir/date-dir" relative/root
 run 1 sh "$work/run.sh" "$work/missing-script" "$work"
 run 1 sh "$work/run.sh" "$script_dir/date-dir" "$work/not-found"
 [ ! -e "$work/not-found" ] || fail '缺失根目录时不得创建'
@@ -83,9 +90,12 @@ special="$work/CLI 中文 & < > ' \$(touch injected)"
 cp "$script_dir/date-dir" "$special"
 cp "$work/generated.plist" "$work/special.plist"
 plutil -replace WFWorkflowActions.0.WFWorkflowActionParameters.WFTextActionText -string "$special" "$work/special.plist"
+plutil -replace WFWorkflowActions.2.WFWorkflowActionParameters.WFTextActionText -string "$work/中文 root & ' spaces" "$work/special.plist"
 plutil -extract WFWorkflowActions.4.WFWorkflowActionParameters.Script raw -o "$work/special.sh" "$work/special.plist"
-run 0 sh "$work/special.sh" "$special" "$work"
-equal "$(cat "$work/stdout")" "$work/2026/2026-01/2026-01-01"
+configured_cli=$(plutil -extract WFWorkflowActions.0.WFWorkflowActionParameters.WFTextActionText raw -o - "$work/special.plist")
+configured_root=$(plutil -extract WFWorkflowActions.2.WFWorkflowActionParameters.WFTextActionText raw -o - "$work/special.plist")
+run 0 sh "$work/special.sh" "$configured_cli" "$configured_root"
+equal "$(cat "$work/stdout")" "$target"
 [ ! -e injected ] || fail '脚本路径被当作代码执行'
 printf 'PASS: CLI path is data, including quotes, XML characters and shell metacharacters\n'
 
