@@ -14,6 +14,7 @@
 
 ### Tools（工具）
 
+- [`local-date-dir`](./skills/tools/local-date-dir/SKILL.md)：用纯 Shell 计算、创建和打开本地日期目录，支持原子操作组合、日期与时区覆盖，以及导入后配置脚本路径的 macOS `today-dir` 快捷指令。
 - [`feishu-minutes-extract`](./skills/tools/feishu-minutes-extract/SKILL.md)：提取飞书妙记 Web 原始文字记录 JSON、发言人映射与词级时间戳，支持浏览器采集、HAR 离线解析和完整性校验。
 - [`poports`](./skills/tools/poports/SKILL.md)：用 SQLite 管理端口台账，提供幂等注册、并发安全分配、CSV 导入导出，以及手动／每日备份和分层淘汰。
 - [`maintain-caddy-lan-wan`](./skills/tools/maintain-caddy-lan-wan/SKILL.md)：维护 Caddy 内网完整入口与公网最小暴露入口，并通过本地配置指定两套 Compose 目录。

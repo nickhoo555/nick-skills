@@ -1,0 +1,42 @@
+#!/bin/sh
+# Build one portable artifact; the user configures the CLI path after import.
+set -eu
+usage() {
+  printf '%s\n' '用法：build-macos-shortcut [--sign] OUTPUT' \
+    '默认仅生成本地未签名 plist；--sign 将通用模板发送给 Apple 校验，生成可导入的 .shortcut。' \
+    '不绑定本机脚本路径；导入时填写 date-dir 的绝对路径。'
+}
+invalid() { printf 'build-macos-shortcut: %s\n' "$*" >&2; exit 2; }
+failed() { printf 'build-macos-shortcut: %s\n' "$*" >&2; exit 1; }
+sign=no
+case ${1-} in
+  -h|--help) usage; exit 0 ;;
+  --sign) sign=yes; shift ;;
+esac
+[ "$#" -eq 1 ] && [ -n "$1" ] || { usage >&2; exit 2; }
+[ "$(uname -s)" = Darwin ] || failed '生成工具需要 macOS 的 plutil 和 shortcuts'
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
+output=$1
+case $output in /*) ;; *) output=$PWD/$output ;; esac
+if [ "$sign" = yes ]; then
+  case $output in *.shortcut) ;; *) invalid '已签名文件必须使用 .shortcut 扩展名' ;; esac
+fi
+[ -d "$(dirname -- "$output")" ] || invalid '输出父目录不存在'
+case $output in
+  "$script_dir/date-dir"|"$script_dir/build-macos-shortcut"|"$script_dir/create-today-and-open")
+    invalid '输出不能覆盖源脚本' ;;
+esac
+work=$(mktemp -d "${TMPDIR:-/tmp}/date-dir-shortcut.XXXXXX")
+trap 'rm -rf "$work"' EXIT
+cp "$script_dir/../assets/macos/create-today-directory.plist" "$work/workflow.plist"
+script=$(cat "$script_dir/create-today-and-open")
+plutil -replace WFWorkflowActions.4.WFWorkflowActionParameters.Script -string "$script" "$work/workflow.plist"
+plutil -lint "$work/workflow.plist" >&2
+if [ "$sign" = yes ]; then
+  plutil -convert binary1 -o "$work/unsigned.shortcut" "$work/workflow.plist"
+  shortcuts sign --mode anyone --input "$work/unsigned.shortcut" --output "$work/signed.shortcut" >&2
+  mv -f "$work/signed.shortcut" "$output"
+else
+  cp "$work/workflow.plist" "$output"
+fi
+printf '%s\n' "$output"

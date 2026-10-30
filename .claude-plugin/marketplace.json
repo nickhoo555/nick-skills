@@ -16,7 +16,7 @@
         "./skills/tools/maintain-caddy-lan-wan",
         "./skills/tools/poports",
         "./skills/tools/feishu-minutes-extract",
-        "./skills/.experimental/tools/local-date-dir"
+        "./skills/tools/local-date-dir"
       ]
     },
     {

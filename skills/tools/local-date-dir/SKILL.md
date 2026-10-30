@@ -1,8 +1,6 @@
 ---
 name: local-date-dir
 description: 按日期计算、创建或打开本地目录时使用；默认采用年/年-月/年-月-日结构，提供可独立组合的路径、创建和打开操作。不处理网盘远端写入或挂载缓存。
-metadata:
-  internal: true
 ---
 
 # 本地日期目录
@@ -57,6 +55,22 @@ target=$("$DATE_DIR" path --root '/path/to/archive' --timezone Asia/Shanghai) ||
 
 相对根目录按当前工作目录转成绝对路径，支持 `~`。本地路径遵循文件系统符号链接语义，不构成目录隔离边界。外置卷必须先由调用方确认已经挂载，避免卷缺失时把目录创建到系统盘。对于只读网盘挂载，使用对应服务的远端创建流程。
 
+## macOS 快捷指令
+
+配套快捷指令名为 `today-dir`，模板为 [assets/macos/create-today-directory.plist](assets/macos/create-today-directory.plist)：导入时填写 `date-dir` 的绝对路径（不加引号），保存到第一个“文本”操作；运行时选择根目录，再组合 `create` 与 `open`。路径通过参数传递，不拼入 Shell 代码；不复制日期算法，不使用管理员权限。取消选择即停止。
+
+用本 Skill 下 `scripts/build-macos-shortcut` 的绝对路径生成；默认只生成本地未签名 plist。需要可导入的文件时显式使用 `--sign`：
+
+```sh
+"$BUILD_MACOS_SHORTCUT" /tmp/today-dir.plist
+# 用户同意 Apple 校验后执行：
+"$BUILD_MACOS_SHORTCUT" --sign /tmp/today-dir.shortcut
+```
+
+签名会把通用模板发送给 Apple 校验，执行前告知用户并取得同意；发布版只有占位路径，不包含本机地址。使用 `anyone` 模式，不附带作者联系人信息。见 [Apple 官方说明](https://support.apple.com/en-gb/guide/shortcuts-mac/apd455c82f02/mac)。签名文件双击导入，按导入问题配置脚本路径；之后也可编辑第一个“文本”操作。若系统要求开启“允许运行脚本”，由用户决定是否开启，不自动更改安全设置。
+
+同一份签名文件可在不同 Mac 导入。脚本移动或 Skill 晋升后，只需修改本地快捷指令的第一个“文本”操作，无需重新生成或签名；只有重新导出分发修改后的版本才涉及签名。`scripts/create-today-and-open` 是纯组合包装，接收“脚本路径、根目录”两个参数。生成工具只填入通用包装脚本，不读取 `DATE_DIR`，产物存入 `generated/`（已忽略）。
+
 ## 开发验证
 
 在 Skill 目录执行：
@@ -66,6 +80,8 @@ sh tests/test-date-dir.sh
 sh -n scripts/date-dir
 # 可选静态检查，运行脚本本身不依赖 ShellCheck。
 shellcheck -s sh scripts/date-dir tests/test-date-dir.sh
+# macOS 配套模板及生成脚本测试，不联网、不签名。
+sh tests/test-macos-shortcut.sh
 ```
 
 实现参考 PikPak 的日期层级与动作拆分，没有引入其 rclone、缓存失效或挂载可见性逻辑。日期校验与路径计算独立于目录创建和打开；CLI 为组合根，打开程序可替换。

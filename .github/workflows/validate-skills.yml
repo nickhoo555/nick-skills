@@ -24,4 +24,15 @@ jobs:
           node skills/tools/feishu-minutes-extract/scripts/build-browser.ts
           git diff --exit-code -- skills/tools/feishu-minutes-extract/scripts/browser-export.js
       - run: python3 -m unittest discover -s skills/tools/poports/tests -v
+      - name: Test local date directories on Linux
+        run: sh skills/tools/local-date-dir/tests/test-date-dir.sh
       - run: npx --yes skills@latest add . --list
+
+  local-date-dir-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Test local date directories on macOS
+        run: sh skills/tools/local-date-dir/tests/test-date-dir.sh
+      - name: Test portable shortcut generation without signing
+        run: sh skills/tools/local-date-dir/tests/test-macos-shortcut.sh

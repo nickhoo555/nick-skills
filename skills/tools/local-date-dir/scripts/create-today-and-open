@@ -1,0 +1,10 @@
+#!/bin/sh
+# Composition only. Both paths arrive as data, never as generated shell code.
+set -eu
+[ "$#" -eq 2 ] || { printf '需要脚本路径和一个根目录\n' >&2; exit 2; }
+DATE_DIR=$1
+case $DATE_DIR in /*) ;; *) printf '请先配置 date-dir 的绝对路径\n' >&2; exit 2 ;; esac
+[ -f "$DATE_DIR" ] && [ -x "$DATE_DIR" ] || { printf '脚本不存在或不可执行：%s\n' "$DATE_DIR" >&2; exit 1; }
+[ -d "$2" ] || { printf '根目录不可用：%s\n' "$2" >&2; exit 1; }
+target=$("$DATE_DIR" create --root "$2")
+"$DATE_DIR" open "$target"
